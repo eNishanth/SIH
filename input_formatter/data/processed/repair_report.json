@@ -1,0 +1,11 @@
+{
+  "total_features": 2,
+  "invalid_found": 0,
+  "repair_log": [],
+  "repair_verified": true,
+  "topology_issues": {
+    "overlaps": [],
+    "duplicates": [],
+    "empty_or_invalid": []
+  }
+}
