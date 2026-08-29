@@ -1,72 +1,75 @@
 # matcher/
 
-A small, dependency-free engine that checks how well aerial-extracted
-building footprints line up with cadastral parcel boundaries, and flags
-the ones that look wrong enough to re-survey.
+Checks how well aerial-extracted building footprints line up with
+cadastral parcel boundaries, and flags the ones worth re-surveying.
 
-Sits next to `input_formatter/` as its own top-level stage — it reads the
-outputs `input_formatter` produces, it doesn't live inside it.
+Sits at the **top level of the repo**, as its own stage — a sibling to
+`input_formatter/` and `data/`, not nested inside `input_formatter/`:
 
 ```
-project/
+SIH/
 ├── input_formatter/
 │   ├── geoagent/
 │   ├── cadastralagent/
-│   └── shared/
-├── matcher/                <- this module
-│   ├── geometry.py          polygon math (area, overlap, distance) — no shapely
-│   ├── match_engine.py      pairs each building to its best-fit parcel
-│   ├── report.py            turns matches into a human-readable report
-│   └── run_matcher.py       CLI entrypoint
+│   ├── shared/
+│   └── requirements.txt
+├── matcher/                  <- add this folder here
+│   ├── __init__.py
+│   ├── match_engine.py        does the matching + scoring
+│   ├── report.py               turns matches into a report
+│   ├── run_matcher.py          entrypoint
+│   └── README.md
 └── data/
     └── processed/
-        ├── cadastral_output.json
-        ├── aerial_output.json
-        └── matched_output.json   <- this module can write here too
+        ├── cadastral_output.geojson   (from geoagent)
+        ├── aerial_output.geojson      (from cadastralagent)
+        ├── matched_output.json        <- this module writes this
+        └── match_report.txt           <- and this
 ```
+
+## Why it's built this way
+
+Reuses what's already in the repo instead of adding anything new:
+- Reads the real `.geojson` outputs `run_geoagent.py` /
+  `run_cadastralagent.py` already produce, via `shared.utils.load_geojson`.
+- Uses `geopandas` + `shapely` (already in `input_formatter/requirements.txt`)
+  for real polygon intersection/union — no extra dependency added.
+- Reprojects both layers to a local UTM CRS
+  (`GeoDataFrame.estimate_utm_crs()`) before computing area/overlap, so
+  results are in real metres, not degrees.
+- Writes with `shared.utils.save_json`, same as the rest of the pipeline.
+- Picks up the `osm_id` column, matching `shared/overpass_fetch.py`'s ID
+  convention.
 
 ## Run it
 
 ```bash
-python run_matcher.py data/processed/cadastral_output.json data/processed/aerial_output.json --out-dir data/processed
+cd matcher
+python run_matcher.py
 ```
 
-Writes `matched_output.json` (one record per building: matched parcel,
-IoU, area error %, confidence score, status) and `match_report.txt`
-(plain-language summary + a call-out list of everything flagged for
-remeasurement).
+Defaults to `data/processed/cadastral_output.geojson` and
+`aerial_output.geojson`, and writes `matched_output.json` +
+`match_report.txt` back into `data/processed/`. Override paths with
+`--cadastral`, `--aerial`, `--matched-out`, `--report-out` if needed.
 
-## How the confidence score works
-
-For each building, the nearest few parcels (by centroid) are checked;
-the best overlap wins the match. Confidence is:
+## Confidence score
 
 ```
-confidence = 0.7 * IoU(building, parcel)  +  0.3 * (1 - area_error_pct/100)
+confidence = 0.7 * IoU(building, parcel)  +  0.3 * (1 - area_error_pct / 100)
 ```
 
-- **IoU** (intersection over union of the two shapes) is the main signal —
-  it directly measures "do these two borders actually agree".
+- **IoU** (intersection over union) is the main signal.
 - **Area error %** is a lighter secondary signal, since two shapes can
-  have the same area but sit in the wrong place.
+  have similar area but sit in the wrong place.
 
-Status bands: `HIGH` (>=0.8), `MEDIUM` (>=0.5), `LOW` (<0.5). Anything
-`LOW` or with no parcel within 250m gets flagged in the report as
-"SUGGEST REMEASURE".
+Bands: `HIGH` (>=0.8), `MEDIUM` (>=0.5), `LOW` (<0.5). `LOW` or
+no-parcel-within-250m gets flagged `SUGGEST REMEASURE` in the report.
 
-## Known limitations (this is a v0, not a survey-grade tool)
+## Limitations (v0, be upfront about these in your writeup)
 
-- Polygon intersection uses Sutherland-Hodgman clipping, which is exact
-  only when the parcel polygon is convex. Most rectangular parcels are
-  fine; a genuinely concave/L-shaped parcel can throw the overlap area
-  off a bit.
-- Only the outer ring of each polygon is used — holes (e.g. a courtyard
-  cut out of a parcel) are ignored.
-- Distances/areas use a flat equirectangular projection local to each
-  building — fine at building/parcel scale, not for anything spanning
-  kilometers.
-- Matching only checks the 5 nearest parcels by centroid, for speed —
-  fine for normal parcel densities, not tuned for adversarial layouts.
-
-None of this needs shapely/geopandas — everything is plain Python, so it
-drops into the existing project without adding dependencies.
+- Only checks the 5 nearest parcels by centroid distance, for speed.
+- Doesn't currently subtract holes (e.g. courtyards) out of parcels.
+- 250m candidate radius is a starting guess, not tuned on real data yet
+  — tighten or loosen it once you see it run on the actual Bengaluru
+  dataset.

@@ -1,17 +1,13 @@
 """
-report.py
-Turns match_engine's output into:
-  1. matched_output.json — the raw match records (drop-in for
-     data/processed/matched_output.json in the project layout)
-  2. a plain-text report summarizing overall quality and calling out
-     the specific building/parcel pairs that look wrong enough to
-     warrant a re-survey.
+matcher - report.py
+Turns match_engine's output into matched_output.json plus a plain-text
+summary that calls out the specific building/parcel pairs worth a
+re-survey.
 """
-import json
 from match_engine import LOW_CONFIDENCE, MEDIUM_CONFIDENCE
 
 
-def summarize(matches):
+def summarize(matches: list) -> dict:
     total = len(matches)
     unmatched = [m for m in matches if m["status"] == "UNMATCHED"]
     matched = [m for m in matches if m["status"] != "UNMATCHED"]
@@ -36,12 +32,7 @@ def summarize(matches):
     }
 
 
-def write_json_report(matches, path):
-    with open(path, "w") as f:
-        json.dump(matches, f, indent=2)
-
-
-def write_text_report(matches, summary, path):
+def write_text_report(matches: list, summary: dict, path: str) -> None:
     lines = []
     lines.append("BUILDING <-> PARCEL BOUNDARY MATCH REPORT")
     lines.append("=" * 42)
@@ -78,7 +69,7 @@ def write_text_report(matches, summary, path):
     lines.append("-" * 42)
     for m in matches:
         lines.append(
-            f"  building {m['building_id']:>6} -> parcel {str(m['parcel_id']):>6} "
+            f"  building {str(m['building_id']):>10} -> parcel {str(m['parcel_id']):>10} "
             f"| status={m['status']:<10} confidence={m['confidence']}"
         )
 
