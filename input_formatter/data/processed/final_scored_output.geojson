@@ -1,8 +1,0 @@
-{
-"type": "FeatureCollection",
-"name": "final_scored_output",
-"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
-"features": [
-{ "type": "Feature", "properties": { "survey_no_left": "123 A", "index_right": 0, "survey_no_right": "123/A", "owner_name": "Ramesh", "overlap_confidence": 100.0, "cleaned_number": "", "number_match_score": 0.0, "final_confidence": 70.0 }, "geometry": { "type": "Polygon", "coordinates": [ [ [ 77.5902, 12.9702 ], [ 77.5908, 12.9702 ], [ 77.5908, 12.9708 ], [ 77.5902, 12.9708 ], [ 77.5902, 12.9702 ] ] ] } }
-]
-}

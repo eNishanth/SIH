@@ -1,6 +1,0 @@
-{
-  "type": "FeatureCollection",
-  "features": [
-    {"type": "Feature", "properties": {"survey_no": "123 A"}, "geometry": {"type": "Polygon", "coordinates": [[[77.5902,12.9702],[77.5908,12.9702],[77.5908,12.9708],[77.5902,12.9708],[77.5902,12.9702]]]}}
-  ]
-}
