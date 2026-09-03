@@ -12,7 +12,7 @@ import requests
 import geopandas as gpd
 from shapely.geometry import Polygon
 
-OVERPASS_URL = "https://overpass-api.de/api/interpreter"
+OVERPASS_URL = "https://lz4.overpass-api.de/api/interpreter"
 
 # Approximate bounding box covering all of Bengaluru city
 # format: south, west, north, east
@@ -30,7 +30,12 @@ def build_query(south: float, west: float, north: float, east: float, tag: str) 
 def fetch_osm_ways(south: float, west: float, north: float, east: float, tag: str) -> list:
     """Single live call to Overpass API for one bounding box."""
     query = build_query(south, west, north, east, tag)
-    response = requests.post(OVERPASS_URL, data={"data": query}, timeout=90)
+    headers = {
+        "User-Agent": "GeoSync-SIH-Project/1.0",
+        "Accept": "application/json",
+        "Accept-Language": "en-US,en;q=0.9"
+    }
+    response = requests.post(OVERPASS_URL, data={"data": query}, headers=headers, timeout=90)
     response.raise_for_status()
     data = response.json()
     return data.get("elements", [])
@@ -86,7 +91,7 @@ def make_tiles(south: float, west: float, north: float, east: float, tile_size_d
 
 def fetch_area_tiled(south: float, west: float, north: float, east: float,
                       tag: str, tile_size_deg: float = 0.02,
-                      pause_between_calls: float = 1.0,
+                      pause_between_calls: float = 2.0,
                       max_tiles: int = None) -> gpd.GeoDataFrame:
     """
     Fetch real OSM data for a large area by breaking it into small tiles,
